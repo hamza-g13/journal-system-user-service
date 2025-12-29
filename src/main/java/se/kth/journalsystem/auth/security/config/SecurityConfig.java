@@ -21,7 +21,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Gör att du kan använda @PreAuthorize("hasRole('ADMIN')") i dina controllers
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -31,10 +31,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults()) // Aktivera CORS med default-konfigurationen nedan
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health").permitAll() // TILLAGT: Hälsoövervakning öppen för alla
-                        .requestMatchers("/api/auth/**").permitAll()     // Släpp igenom allt under /api/auth/
+                        .requestMatchers("/healthz").permitAll()      // <--- VIKTIG ÄNDRING: Matchar KTH Clouds inställning
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -46,12 +46,10 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Konfigurera CORS (Tillåt frontend att anropa)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Tillåt anrop från frontend (localhost:80 för nginx/k8s, localhost:5173 för lokal vite)
-        configuration.setAllowedOrigins(List.of("http://localhost:80", "http://localhost:5173", "http://localhost:3000"));
+        configuration.setAllowedOrigins(List.of("http://localhost:80", "http://localhost:5173", "http://localhost:3000", "https://*.cloud.cbh.kth.se")); // Lade till wildcard för molnet
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
