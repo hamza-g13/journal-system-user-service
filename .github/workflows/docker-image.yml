@@ -67,3 +67,4 @@ jobs:
           kubectl set image deployment/auth-service auth-service=${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:latest -n journal-system
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
