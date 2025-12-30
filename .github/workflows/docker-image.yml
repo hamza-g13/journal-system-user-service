@@ -49,7 +49,6 @@ jobs:
         with:
           context: .
           push: true
-          # HÄR ÄR ÄNDRINGEN: Vi använder ditt nya repo-namn
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:latest
@@ -61,10 +60,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
       - name: Deploy to K8s
-        # Uppdaterar deploymenten med den nya bilden
         run: |
+          # Här behöver vi inte krångla med env-vars, kubectl vet nu var configen finns
           kubectl set image deployment/auth-service auth-service=${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:latest -n journal-system
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+          kubectl rollout status deployment/auth-service -n journal-system
 
