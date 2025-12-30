@@ -17,18 +17,12 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          cache: maven
 
       - name: Run Tests
         run: mvn test
 
-  build-and-push:
+  build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -53,22 +47,10 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:latest
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      - name: Deploy to K8s
+      - name: Trigger Redeploy in KTH Cloud
         run: |
-          # Här behöver vi inte krångla med env-vars, kubectl vet nu var configen finns
-          kubectl set image deployment/auth-service auth-service=${{ secrets.DOCKERHUB_USERNAME }}/journal-system-user-service:latest -n journal-system
-          kubectl rollout status deployment/auth-service -n journal-system
-
+          # Byt ut DEPLOYMENT_ID nedan mot ditt riktiga ID för Auth Service!
+          curl -X POST "https://api.cloud.cbh.kth.se/deploy/v2/deployments/DEPLOYMENT_ID_FOR_AUTH/command" \
+          -H "X-Api-Key: ${{ secrets.KTH_CLOUD_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{"command": "restart"}'
